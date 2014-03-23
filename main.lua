@@ -35,6 +35,7 @@ function love.load()
     bonuses = {}
     bonus_freq = 7
     buffs = {}
+    maxbuffs = 10   -- if u get more then 10 buffs bugs begin (!)
 
     --score_to_rotate = 10
 
@@ -158,7 +159,6 @@ function consumeBonus(b)
         player.movespeed = player.movespeed + 5
         local function ps() player.movespeed = player.movespeed - 5 end
         table.insert(buffs, cron.after(5, ps)) 
-        print(player.movespeed)
     elseif b.class == 'hsize' then
         hole_size = hole_size + 25
         local function hs() hole_size = hole_size - 25 end
@@ -171,7 +171,8 @@ function consumeBonus(b)
 end
 
 function game(dt)
-        -- spawn obstacle if time has come
+    print(#buffs, #obstacles)
+    -- spawn obstacle if time has come
     if time_to_next <= 0 then
         time_to_next = 110
         createObstacle()
@@ -206,7 +207,7 @@ function game(dt)
         end
         b.y = b.y + b.speed
         if b.y < -b.size or b.y > height then
-            bonuses[k] = nil
+            table.remove(bonuses,k)
         end
     end
 
@@ -261,7 +262,7 @@ function game(dt)
 
         -- remove unneeded obstacles
         if o.y < -o.height then
-            obstacles[k] = nil
+            table.remove(obstacles, k)
             score = score + 0.5
         end
     end
@@ -290,6 +291,10 @@ function game(dt)
 
     for _, buff in pairs(buffs) do
         buff:update(dt)
+    end
+
+    if #buffs > maxbuffs then
+        table.remove(buffs, 1)
     end
 end
 
