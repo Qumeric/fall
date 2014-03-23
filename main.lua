@@ -2,8 +2,11 @@ require 'Tserial'
 cron=require 'cron/cron'
 
 function love.conf(t)
-    t.window.width = 500
-    t.window.height = 500
+    t.window.width = 700
+    t.window.height =700
+    t.identity = 'save'
+    t.window.title = 'Fall'
+    t.window.resizable = true
 end
 
 function love.load()
@@ -16,24 +19,26 @@ function love.load()
 
     music = love.audio.newSource('hexagon-force.mp3')
     music:play()
-
+    --[[
     width = love.graphics.getWidth()
     height = love.graphics.getWidth()
-
+    --]]
+    width = 700
+    height = 700
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
-              canmove = true, movespeed=5}
+              canmove = true, movespeed=7}
 
     time_to_next = 0
     base_speed = 4
     obstacles_speed = base_speed
     obstacle_height = 20
     hole_size = 75
-    speed_price = 1
+    speed_price = math.ceil((player.movespeed-2)^1.5)
     obstacles = {}
 
     bonus_size = 20
     bonuses = {}
-    bonus_freq = 7
+    bonus_freq = 10
     buffs = {}
     maxbuffs = 10   -- if u get more then 10 buffs bugs begin (!)
 
@@ -54,7 +59,7 @@ end
 
 function love.draw()
     -- background
-    love.graphics.setColor(50, 40, 30)
+    love.graphics.setColor(55, 42, 25)
     love.graphics.rectangle('fill', 0, 0, width, height)
     
     -- scores
@@ -80,13 +85,13 @@ function love.draw()
             if b.class == 'coin' then
                 love.graphics.setColor(255, 215, 0) -- gold
             elseif b.class == 'destroy' then
-                love.graphics.setColor(200, 200, 0)
+                love.graphics.setColor(0, 255, 255)
             elseif b.class == 'speed' then
                 love.graphics.setColor(0, 0, 255)
             elseif b.class == 'hsize' then
                 love.graphics.setColor(0, 255, 0)
             elseif b.class == 'bspeed' then
-                love.graphics.setColor(255, 200, 200)
+                love.graphics.setColor(255, 0, 255)
             end
                 love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
         end
@@ -98,7 +103,8 @@ function love.draw()
         end
     elseif state=='store' then
         love.graphics.setColor(255, 191, 0)
-        love.graphics.print('Press 1 to buy a speed upgrade', 50, 40)
+        love.graphics.print('Press 1 to buy a speed upgrade ($' ..
+                             speed_price .. ')', 50, 40)
         love.graphics.print('Press 0 to start new game', 50, 80)
         love.graphics.setColor(250, 245, 191)
         love.graphics.print(message, 50, 400)
@@ -140,8 +146,11 @@ function saveGame()
 end
 
 function spawnBonus()
-    local classes = {'coin', 'coin', 'destroy', 'speed', 'hsize', 'bspeed'}
-    local c = classes[math.random(#classes)]
+    local classes = {'destroy', 'speed', 'hsize', 'bspeed'}
+    local c = 'coin'
+    if math.random() > 0.5 then
+        c = classes[math.random(#classes)]
+    end
     print(c)
     bonus = {class = c, size = bonus_size, speed = 1,
              x = math.random(width), y = math.random(height/2, height)-bonus_size}
@@ -171,7 +180,6 @@ function consumeBonus(b)
 end
 
 function game(dt)
-    print(#buffs, #obstacles)
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
         time_to_next = 110
@@ -274,15 +282,7 @@ function game(dt)
     
     -- game over?
     if player.y < 0 then
-        highscore = math.max(score, highscore)
-        saveGame()
-        player.y = 0
-        score = 0
-        bonuses = {}
-        obstacles = {}
-        time_to_next = 0
-        love.timer.sleep(1)
-        state = 'store'
+        newgame()
     end
 
     -- don't let the player go offscreen
@@ -303,7 +303,7 @@ function store(dt)
         if coins >= speed_price then
             menumsg('New ms:' .. player.movespeed)
             coins = coins - speed_price
-            speed_price = speed_price * 2
+            speed_price = math.ceil((player.movespeed-2)^1.5)
             player.movespeed = player.movespeed + 1
             saveGame()
         else
@@ -320,4 +320,16 @@ function menumsg(str)
     message = str
     local function pm() message = '' end
     message_clock = cron.after(5, pm)
+end
+
+function newgame()
+    highscore = math.max(score, highscore)
+    saveGame()
+    player.y = 0
+    score = 0
+    bonuses = {}
+    obstacles = {}
+    time_to_next = 0
+    love.timer.sleep(1)
+    state = 'store'
 end
