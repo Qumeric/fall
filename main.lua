@@ -16,17 +16,18 @@ function love.load()
     height = love.graphics.getWidth()
 
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
-              canmove = true, movespeed=20}
+              canmove = true, movespeed=12}
 
     time_to_next = 0
-    base_speed = 5
+    base_speed = 4
     obstacles_speed = base_speed
+    obstacle_height = 20
     hole_size = 75
     obstacles = {}
 
     bonus_size = 20
     bonuses = {}
-    bonus_freq = 10
+    bonus_freq = 7
     buffs = {}
 
     --score_to_rotate = 10
@@ -62,7 +63,8 @@ function love.draw()
 
     -- player
     love.graphics.setColor(255, 0, 0)
-    love.graphics.rectangle('fill', player.x, player.y, player.size, player.size)
+    love.graphics.rectangle('fill', player.x, player.y+obstacles_speed,
+                                    player.size, player.size)
 
     -- bonuses
     love.graphics.setColor(0, 0, 0)
@@ -92,7 +94,7 @@ function love.update(dt)
 
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
-        time_to_next = 100
+        time_to_next = 110
         createObstacle()
     end
 
@@ -112,7 +114,7 @@ function love.update(dt)
         end
     end
 
-    player.speed = player.speed + 1 
+    player.speed = player.speed + 0.4
     player.canmove = true
 
     -- move and remove unneded bonuses
@@ -139,10 +141,10 @@ function love.update(dt)
         obstacles[k].x = o.x + o.movespeed * o.direction
         if o.x < -o.length then 
             obstacles[k].direction = 1
-            obstacles[k-1].direction = 1
+            if obstacles[k-1] then obstacles[k-1].direction = 1 end
         elseif o.x > width then
             obstacles[k].direction = -1
-            obstacles[k+1].direction = -1
+            if obstacles[k+1] then obstacles[k+1].direction = -1 end
         end
 
         -- check collisions with bonuses
@@ -151,9 +153,9 @@ function love.update(dt)
                                  o.x, o.y, o.length, o.height) 
             if collide_obs then
                 --print(b.y, o.height, o.y)
-                if b.y + o.height - obstacles_speed < o.y then
+                if b.y + b.size - obstacles_speed - b.speed <= o.y then
                     --print('bonus collides')
-                    b.y = o.y - o.height - obstacles_speed
+                    b.y = o.y - b.size - obstacles_speed
                 end
             end
         end
@@ -162,9 +164,9 @@ function love.update(dt)
         collide = checkCollision(player.x, player.y, player.size, player.size, 
                                  o.x, o.y, o.length, o.height) 
         if collide then
-            if player.y + o.height - player.speed <= o.y then
+            if player.y + player.size - player.speed - obstacles_speed <= o.y then
+                player.y = o.y - player.size - player.speed - obstacles_speed + 1
                 player.speed = 0
-                player.y = o.y - o.height - player.speed - obstacles_speed
             else
                 -- don't let the player fly into collision from sides
                 player.canmove = false 
@@ -218,9 +220,9 @@ function createObstacle()
     local d = (math.random() > 0.5) and 1 or -1
 
     obstacle1 = {x = hole_position+hole_size, y = height, direction = d,
-                 length = width, height = 20, movespeed = ms}
+                 length = width, height = obstacle_height, movespeed = ms}
     obstacle2 = {x = -width+hole_position-hole_size, y = height, direction = d,
-                 length = width, height = 20, movespeed = ms}
+                 length = width, height = obstacle_height, movespeed = ms}
 
     table.insert(obstacles, obstacle1)
     table.insert(obstacles, obstacle2)
