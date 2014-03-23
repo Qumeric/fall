@@ -9,7 +9,8 @@ All music use [CC BY-NC-SA 3.0](http://creativecommons.org/licenses/by-nc-sa/3.0
 
 Libraries
 ---------
-[Tserial](https://love2d.org/wiki/Tserial) by [Taehal](https://love2d.org/wiki/User:Taehl).
+[Tserial](https://love2d.org/wiki/Tserial) by [Taehl](https://love2d.org/wiki/User:Taehl).
+
 [cron.lua](https://github.com/kikito/cron.lua) by [Kikito](http://kiki.to).
 
 Font
