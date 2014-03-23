@@ -1,15 +1,11 @@
 require 'Tserial'
 cron=require 'cron/cron'
 
-function love.conf(t)
-    t.window.width = 700
-    t.window.height =700
-    t.identity = 'save'
-    t.window.title = 'Fall'
-    t.window.resizable = true
-end
-
 function love.load()
+    love.filesystem.setIdentity('Fall')
+    width = 700
+    height = 700
+    succes = love.window.setMode(width, height, {borderless=true})
     state = 'store'
 
     message = ''
@@ -23,8 +19,7 @@ function love.load()
     width = love.graphics.getWidth()
     height = love.graphics.getWidth()
     --]]
-    width = 700
-    height = 700
+
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
               canmove = true, movespeed=7}
 
@@ -64,17 +59,9 @@ function love.draw()
     
     -- scores
     love.graphics.setFont(font)
-    love.graphics.setColor(191, 255, 0)
-
-    love.graphics.print('$:'  .. coins, 205, 0)
-    love.graphics.print('->'  .. player.movespeed, 305, 0)
+    
 
     if state=='game' then
-
-        --scores
-        love.graphics.print('S:'  .. score, 5, 0)
-        love.graphics.print('HS:' .. highscore, 95, 0)
-
         -- player
         love.graphics.setColor(255, 0, 0)
         love.graphics.rectangle('fill', player.x, player.y+obstacles_speed,
@@ -101,6 +88,11 @@ function love.draw()
         for _, o in pairs(obstacles) do -- FIXME?
             love.graphics.rectangle('fill', o.x, o.y, o.length, o.height)
         end
+
+        --scores
+        love.graphics.setColor(191, 255, 0)
+        love.graphics.print('S:'  .. score, 5, 0)
+        love.graphics.print('HS:' .. highscore, 95, 0)
     elseif state=='store' then
         love.graphics.setColor(255, 191, 0)
         love.graphics.print('Press 1 to buy a speed upgrade ($' ..
@@ -109,9 +101,15 @@ function love.draw()
         love.graphics.setColor(250, 245, 191)
         love.graphics.print(message, 50, 400)
     end
+    love.graphics.setColor(191, 255, 0)
+    love.graphics.print('$:'  .. coins, 205, 0)
+    love.graphics.print('->'  .. player.movespeed, 305, 0)
 end
 
 function love.update(dt)
+    if love.keyboard.isDown('escape') then
+        love.event.push('quit')
+    end
     if state =='game' then
         game(dt)
     elseif state =='store' then
@@ -151,7 +149,6 @@ function spawnBonus()
     if math.random() > 0.5 then
         c = classes[math.random(#classes)]
     end
-    print(c)
     bonus = {class = c, size = bonus_size, speed = 1,
              x = math.random(width), y = math.random(height/2, height)-bonus_size}
     table.insert(bonuses, bonus)
