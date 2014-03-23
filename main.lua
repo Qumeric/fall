@@ -1,4 +1,6 @@
 require 'Tserial'
+cron=require 'cron/cron'
+
 function love.conf(t)
     t.window.width = 500
     t.window.height = 500
@@ -19,11 +21,15 @@ function love.load()
     time_to_next = 0
     base_speed = 5
     obstacles_speed = base_speed
-    hole_size = 50
+    hole_size = 75
     obstacles = {}
 
     bonus_size = 20
     bonuses = {}
+    bonus_freq = 10
+    buffs = {}
+
+    --score_to_rotate = 10
 
     SAVENAME = 'scores.save'
     score = 0
@@ -37,6 +43,12 @@ function love.load()
 end
 
 function love.draw()
+    --[[if score > score_to_rotate then
+        love.graphics.translate(width/2, height/2)
+        love.graphics.rotate((score-score_to_rotate)/180*math.pi)
+        love.graphics.translate(-width/2, -height/2)
+    end--]]
+
     -- background
     love.graphics.setColor(50, 40, 30)
     love.graphics.rectangle('fill', 0, 0, width, height)
@@ -57,8 +69,16 @@ function love.draw()
     for _, b in pairs(bonuses) do -- FIXME?
         if b.class == 'coin' then
             love.graphics.setColor(255, 215, 0) -- gold
-            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
+        elseif b.class == 'destroy' then
+            love.graphics.setColor(200, 200, 0)
+        elseif b.class == 'speed' then
+            love.graphics.setColor(0, 0, 255)
+        elseif b.class == 'hsize' then
+            love.graphics.setColor(0, 255, 0)
+        elseif b.class == 'bspeed' then
+            love.graphics.setColor(255, 200, 200)
         end
+            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
     end
 
     -- obstacles
@@ -68,7 +88,7 @@ function love.draw()
     end
 end
 
-function love.update()
+function love.update(dt)
 
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
@@ -77,7 +97,7 @@ function love.update()
     end
 
     -- spawn bonus
-    if math.random() > 0.99 then
+    if math.random() < bonus_freq/1000 then
         spawnBonus()
     end
 
@@ -100,10 +120,8 @@ function love.update()
         local collide_player = checkCollision(b.x, b.y, b.size, b.size, 
                                  player.x, player.y, player.size, player.size) 
         if collide_player then
+            consumeBonus(b)
             bonuses[k] = nil
-            if b.class == 'coin' then
-                coins = coins + 1
-            end
         end
         b.y = b.y + b.speed
         if b.y < -b.size or b.y > height then
@@ -132,9 +150,9 @@ function love.update()
             local collide_obs = checkCollision(b.x, b.y, b.size, b.size, 
                                  o.x, o.y, o.length, o.height) 
             if collide_obs then
-                print(b.y, o.height, o.y)
+                --print(b.y, o.height, o.y)
                 if b.y + o.height - obstacles_speed < o.y then
-                    print('bonus collides')
+                    --print('bonus collides')
                     b.y = o.y - o.height - obstacles_speed
                 end
             end
@@ -188,6 +206,10 @@ function love.update()
     -- don't let the player go offscreen
     player.x = math.max(0, player.x)
     player.x = math.min(width-player.size, player.x)
+
+    for _, buff in pairs(buffs) do
+        buff:update(dt)
+    end
 end
 
 function createObstacle()
@@ -216,7 +238,33 @@ function saveGame()
 end
 
 function spawnBonus()
-    bonus = {class = 'coin', size = bonus_size, speed = 1,
+    local classes = {'coin', 'coin', 'destroy', 'speed', 'hsize', 'bspeed'}
+    local c = classes[math.random(#classes)]
+    print(math.random(#classes), c)
+    bonus = {class = c, size = bonus_size, speed = 1,
              x = math.random(width), y = math.random(height/2, height)-bonus_size}
     table.insert(bonuses, bonus)
+end
+
+function consumeBonus(b)
+    if b.class == 'coin' then
+        coins = coins + 1
+    elseif b.class  == 'destroy' then
+        score = score + 5
+        obstacles = {}
+        time_to_next = 0
+    elseif b.class == 'speed' then
+        player.movespeed = player.movespeed + 5
+        local function ps() player.movespeed = player.movespeed - 5 end
+        table.insert(buffs, cron.after(5, ps)) 
+        print(player.movespeed)
+    elseif b.class == 'hsize' then
+        hole_size = hole_size + 25
+        local function hs() hole_size = hole_size - 25 end
+        table.insert(buffs, cron.after(5, hs))
+    elseif b.class == 'bspeed' then
+        base_speed = base_speed - 1.3
+        local function bs() base_speed = base_speed + 1.3 end
+        table.insert(buffs, cron.after(5, bs))
+    end
 end
