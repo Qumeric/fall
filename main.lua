@@ -7,6 +7,11 @@ function love.conf(t)
 end
 
 function love.load()
+    state = 'store'
+
+    message = ''
+    message_clock = cron.after(0, function() return end)
+
     font = love.graphics.newFont('high_scores.ttf', 48)
 
     music = love.audio.newSource('hexagon-force.mp3')
@@ -16,13 +21,14 @@ function love.load()
     height = love.graphics.getWidth()
 
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
-              canmove = true, movespeed=12}
+              canmove = true, movespeed=5}
 
     time_to_next = 0
     base_speed = 4
     obstacles_speed = base_speed
     obstacle_height = 20
     hole_size = 75
+    speed_price = 1
     obstacles = {}
 
     bonus_size = 20
@@ -40,16 +46,12 @@ function love.load()
         loaded = Tserial.unpack(love.filesystem.read(SAVENAME))
         highscore = loaded[1]
         coins = loaded[2]
+        player.movespeed = loaded[3]
+        speed_price = loaded[4]
     end
 end
 
 function love.draw()
-    --[[if score > score_to_rotate then
-        love.graphics.translate(width/2, height/2)
-        love.graphics.rotate((score-score_to_rotate)/180*math.pi)
-        love.graphics.translate(-width/2, -height/2)
-    end--]]
-
     -- background
     love.graphics.setColor(50, 40, 30)
     love.graphics.rectangle('fill', 0, 0, width, height)
@@ -57,42 +59,119 @@ function love.draw()
     -- scores
     love.graphics.setFont(font)
     love.graphics.setColor(191, 255, 0)
-    love.graphics.print('S:'  .. score, 5, 0)
-    love.graphics.print('HS:' .. highscore, 95, 0)
+
     love.graphics.print('$:'  .. coins, 205, 0)
+    love.graphics.print('->'  .. player.movespeed, 305, 0)
 
-    -- player
-    love.graphics.setColor(255, 0, 0)
-    love.graphics.rectangle('fill', player.x, player.y+obstacles_speed,
-                                    player.size, player.size)
+    if state=='game' then
 
-    -- bonuses
-    love.graphics.setColor(0, 0, 0)
-    for _, b in pairs(bonuses) do -- FIXME?
-        if b.class == 'coin' then
-            love.graphics.setColor(255, 215, 0) -- gold
-        elseif b.class == 'destroy' then
-            love.graphics.setColor(200, 200, 0)
-        elseif b.class == 'speed' then
-            love.graphics.setColor(0, 0, 255)
-        elseif b.class == 'hsize' then
-            love.graphics.setColor(0, 255, 0)
-        elseif b.class == 'bspeed' then
-            love.graphics.setColor(255, 200, 200)
+        --scores
+        love.graphics.print('S:'  .. score, 5, 0)
+        love.graphics.print('HS:' .. highscore, 95, 0)
+
+        -- player
+        love.graphics.setColor(255, 0, 0)
+        love.graphics.rectangle('fill', player.x, player.y+obstacles_speed,
+                                        player.size, player.size)
+        -- bonuses
+        love.graphics.setColor(0, 0, 0)
+        for _, b in pairs(bonuses) do -- FIXME?
+            if b.class == 'coin' then
+                love.graphics.setColor(255, 215, 0) -- gold
+            elseif b.class == 'destroy' then
+                love.graphics.setColor(200, 200, 0)
+            elseif b.class == 'speed' then
+                love.graphics.setColor(0, 0, 255)
+            elseif b.class == 'hsize' then
+                love.graphics.setColor(0, 255, 0)
+            elseif b.class == 'bspeed' then
+                love.graphics.setColor(255, 200, 200)
+            end
+                love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
         end
-            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
-    end
 
-    -- obstacles
-    love.graphics.setColor(255, 255, 255)
-    for _, o in pairs(obstacles) do -- FIXME?
-        love.graphics.rectangle('fill', o.x, o.y, o.length, o.height)
+        -- obstacles
+        love.graphics.setColor(255, 255, 255)
+        for _, o in pairs(obstacles) do -- FIXME?
+            love.graphics.rectangle('fill', o.x, o.y, o.length, o.height)
+        end
+    elseif state=='store' then
+        love.graphics.setColor(255, 191, 0)
+        love.graphics.print('Press 1 to buy a speed upgrade', 50, 40)
+        love.graphics.print('Press 0 to start new game', 50, 80)
+        love.graphics.setColor(250, 245, 191)
+        love.graphics.print(message, 50, 400)
     end
 end
 
 function love.update(dt)
+    if state =='game' then
+        game(dt)
+    elseif state =='store' then
+        store(dt)
+    end
+end
 
-    -- spawn obstacle if time has come
+function createObstacle()
+    hole_position = hole_size + math.ceil(math.random()*(width-hole_size*2)+0.5) -- FIXME?
+    local ms = math.max(0, (math.random()-0.5)*10)
+    local d = (math.random() > 0.5) and 1 or -1
+
+    obstacle1 = {x = hole_position+hole_size, y = height, direction = d,
+                 length = width, height = obstacle_height, movespeed = ms}
+    obstacle2 = {x = -width+hole_position-hole_size, y = height, direction = d,
+                 length = width, height = obstacle_height, movespeed = ms}
+
+    table.insert(obstacles, obstacle1)
+    table.insert(obstacles, obstacle2)
+end
+
+function checkCollision(x1,y1,w1,h1, x2,y2,w2,h2)
+    return  x1 < x2+w2 and
+            x2 < x1+w1 and
+            y1 < y2+h2 and
+            y2 < y1+h1
+end
+
+function saveGame()
+    love.filesystem.write(SAVENAME, Tserial.pack({highscore, coins,
+        player.movespeed, speed_price}))
+end
+
+function spawnBonus()
+    local classes = {'coin', 'coin', 'destroy', 'speed', 'hsize', 'bspeed'}
+    local c = classes[math.random(#classes)]
+    print(c)
+    bonus = {class = c, size = bonus_size, speed = 1,
+             x = math.random(width), y = math.random(height/2, height)-bonus_size}
+    table.insert(bonuses, bonus)
+end
+
+function consumeBonus(b)
+    if b.class == 'coin' then
+        coins = coins + 1
+    elseif b.class  == 'destroy' then
+        score = score + 5
+        obstacles = {}
+        time_to_next = 0
+    elseif b.class == 'speed' then
+        player.movespeed = player.movespeed + 5
+        local function ps() player.movespeed = player.movespeed - 5 end
+        table.insert(buffs, cron.after(5, ps)) 
+        print(player.movespeed)
+    elseif b.class == 'hsize' then
+        hole_size = hole_size + 25
+        local function hs() hole_size = hole_size - 25 end
+        table.insert(buffs, cron.after(5, hs))
+    elseif b.class == 'bspeed' then
+        base_speed = base_speed - 1.3
+        local function bs() base_speed = base_speed + 1.3 end
+        table.insert(buffs, cron.after(5, bs))
+    end
+end
+
+function game(dt)
+        -- spawn obstacle if time has come
     if time_to_next <= 0 then
         time_to_next = 110
         createObstacle()
@@ -202,7 +281,7 @@ function love.update(dt)
         obstacles = {}
         time_to_next = 0
         love.timer.sleep(1)
-        music:rewind()
+        state = 'store'
     end
 
     -- don't let the player go offscreen
@@ -214,59 +293,26 @@ function love.update(dt)
     end
 end
 
-function createObstacle()
-    hole_position = hole_size + math.ceil(math.random()*(width-hole_size*2)+0.5) -- FIXME?
-    local ms = math.max(0, (math.random()-0.5)*10)
-    local d = (math.random() > 0.5) and 1 or -1
-
-    obstacle1 = {x = hole_position+hole_size, y = height, direction = d,
-                 length = width, height = obstacle_height, movespeed = ms}
-    obstacle2 = {x = -width+hole_position-hole_size, y = height, direction = d,
-                 length = width, height = obstacle_height, movespeed = ms}
-
-    table.insert(obstacles, obstacle1)
-    table.insert(obstacles, obstacle2)
-end
-
-function checkCollision(x1,y1,w1,h1, x2,y2,w2,h2)
-    return  x1 < x2+w2 and
-            x2 < x1+w1 and
-            y1 < y2+h2 and
-            y2 < y1+h1
-end
-
-function saveGame()
-    love.filesystem.write(SAVENAME, Tserial.pack({highscore, coins}))
-end
-
-function spawnBonus()
-    local classes = {'coin', 'coin', 'destroy', 'speed', 'hsize', 'bspeed'}
-    local c = classes[math.random(#classes)]
-    print(math.random(#classes), c)
-    bonus = {class = c, size = bonus_size, speed = 1,
-             x = math.random(width), y = math.random(height/2, height)-bonus_size}
-    table.insert(bonuses, bonus)
-end
-
-function consumeBonus(b)
-    if b.class == 'coin' then
-        coins = coins + 1
-    elseif b.class  == 'destroy' then
-        score = score + 5
-        obstacles = {}
-        time_to_next = 0
-    elseif b.class == 'speed' then
-        player.movespeed = player.movespeed + 5
-        local function ps() player.movespeed = player.movespeed - 5 end
-        table.insert(buffs, cron.after(5, ps)) 
-        print(player.movespeed)
-    elseif b.class == 'hsize' then
-        hole_size = hole_size + 25
-        local function hs() hole_size = hole_size - 25 end
-        table.insert(buffs, cron.after(5, hs))
-    elseif b.class == 'bspeed' then
-        base_speed = base_speed - 1.3
-        local function bs() base_speed = base_speed + 1.3 end
-        table.insert(buffs, cron.after(5, bs))
+function store(dt)
+    if love.keyboard.isDown('1') then
+        if coins >= speed_price then
+            menumsg('New ms:' .. player.movespeed)
+            coins = coins - speed_price
+            speed_price = speed_price * 2
+            player.movespeed = player.movespeed + 1
+            saveGame()
+        else
+            menumsg('Not enough money!')
+        end
+    elseif love.keyboard.isDown('0') then
+        state = 'game'
+        music:rewind()
     end
+    message_clock:update(dt)
+end
+
+function menumsg(str)
+    message = str
+    local function pm() message = '' end
+    message_clock = cron.after(5, pm)
 end
