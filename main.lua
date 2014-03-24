@@ -19,20 +19,21 @@ function love.load()
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
               canmove = true, movespeed=7}
 
+    speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
+
+    obstacles = {}
     time_to_next = 0
     base_speed = 4
     obstacles_speed = base_speed
     obstacle_height = 20
     hole_size = 75
-    obstacles = {}
 
-    speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
-
-    bonus_size = 20
     bonuses = {}
+    bonus_size = 20
     bonus_freq = 15
     buffs = {}
     bars = {}
+    bar_width = 20
 
     SAVENAME = 'scores.save'
     score = 0
@@ -47,7 +48,6 @@ function love.load()
 end
 
 function love.draw()
-    print(#bars)
     -- background
     love.graphics.setColor(55, 42, 25)
     love.graphics.rectangle('fill', 0, 0, width, height)
@@ -63,17 +63,21 @@ function love.draw()
         -- bonuses
         for _, b in pairs(bonuses) do
             love.graphics.setColor(b.col[1], b.col[2], b.col[3]) -- gold
-            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed, b.size, b.size)
-        end
-
-        -- bars
-        for y, bar in pairs(bars) do
+            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed,
+                                    b.size, b.size)
         end
 
         -- obstacles
         love.graphics.setColor(255, 255, 255)
         for _, o in pairs(obstacles) do
             love.graphics.rectangle('fill', o.x, o.y, o.length, o.height)
+        end
+
+        -- bars
+        for y, bar in pairs(bars) do
+            love.graphics.setColor(bar[2][1], bar[2][2], bar[2][3])
+            love.graphics.rectangle('fill', width-bar[1]*20, (y-1)*bar_width, 
+                                    bar[1]*20, bar_width) 
         end
 
         --scores
@@ -96,6 +100,7 @@ end
 
 
 function love.update(dt)
+    print(#bars)
     if state =='game' then
         game(dt)
     elseif state =='store' then
@@ -168,6 +173,12 @@ end
 
 
 function game(dt)
+    for k, bar in pairs(bars) do
+        bars[k][1] = bar[1] - dt
+        if bar[1] <= 0 then
+            table.remove(bars, k)
+        end
+    end
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
         time_to_next = 110
@@ -202,7 +213,7 @@ function game(dt)
             bonuses[k] = nil
         end
         b.y = b.y + b.speed
-        if b.y < -b.size or b.y > height then
+        if b.y <= -b.size or b.y > height then
             table.remove(bonuses,k)
         end
     end
