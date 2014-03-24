@@ -18,6 +18,7 @@ function love.load()
 
     player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
               canmove = true, movespeed=7}
+    maxspeed = 20
 
     speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
 
@@ -100,7 +101,6 @@ end
 
 
 function love.update(dt)
-    print(#bars)
     if state =='game' then
         game(dt)
     elseif state =='store' then
@@ -144,8 +144,9 @@ function spawnBonus()
     if math.random() > 0.7 then
         c = classes[math.random(#classes)]
     end
-    bonus = {class = c[1], size = bonus_size, speed = 1, col = c[2],
-             x = math.random(width), y = math.random(height/2, height)-bonus_size}
+    bonus = {class = c[1], size = bonus_size, speed = 1, col = c[2], 
+             x = math.random(width),
+             y = math.random(player.y, height)-bonus_size}
     table.insert(bonuses, bonus)
 end
 
@@ -298,14 +299,17 @@ end
 
 function store(dt)
     if love.keyboard.isDown('1') then
-        local price = math.ceil((player.movespeed-2)^1.5)
-        if coins >= price then
-            coins = coins - price
-            player.movespeed = player.movespeed + 1
-            menumsg('New ms:' .. player.movespeed)
-            saveGame()
+        if player.movespeed <= maxspeed then
+            if coins >= speed_price() then
+                coins = coins - speed_price()
+                player.movespeed = player.movespeed + 1
+                menumsg('Your new speed is ' .. player.movespeed .. '!')
+                saveGame()
+            else
+                menumsg('Not enough money.')
+            end
         else
-            menumsg('Not enough money!')
+            menumsg('You are too fast already.')
         end
     elseif love.keyboard.isDown('0') then
         state = 'game'
@@ -320,7 +324,7 @@ function menumsg(str)
     end
     justpressed = true
     local function pm() message = '' justpressed = false end
-    message_clock = cron.after(1, pm)
+    message_clock = cron.after(0.1, pm)
 end
 
 function endgame()
@@ -332,7 +336,6 @@ function endgame()
     obstacles = {}
     buffs = {}
     time_to_next = 0
-    love.timer.sleep(1)
     state = 'store'
     music:stop()
 end
