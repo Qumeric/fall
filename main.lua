@@ -96,8 +96,8 @@ function love.draw()
         love.graphics.print('Highscore:'  .. highscore, 0, 0)
         love.graphics.print('Money:    '  .. coins, 0, 30)
         love.graphics.print('Movespeed:'  .. player.movespeed, 0, 60)
-end
     end
+end
 
 
 function love.update(dt)
@@ -163,7 +163,6 @@ function consumeBonus(b)
     end
 end
 
-
 function makeBuff(stat, power, time, color)
     local c = stat .. '=' .. stat
     loadstring(c .. '+ ' .. power)()
@@ -171,7 +170,6 @@ function makeBuff(stat, power, time, color)
     table.insert(buffs, cron.after(time, f))
     table.insert(bars, {5, color})
 end
-
 
 function game(dt)
     for k, bar in pairs(bars) do
@@ -223,7 +221,6 @@ function game(dt)
         -- move obstacles (y)
         correction = math.max(0, player.y - height + 200 + player.size)/30
         obstacles_speed = base_speed + correction + math.sqrt(score)/10
-        --print(obstacles_speed)
         obstacles[k].y = o.y - obstacles_speed 
 
         -- move obstacles (x)
@@ -241,9 +238,7 @@ function game(dt)
             local collide_obs = checkCollision(b.x, b.y, b.size, b.size, 
                                  o.x, o.y, o.length, o.height) 
             if collide_obs then
-                --print(b.y, o.height, o.y)
                 if b.y + b.size - obstacles_speed - b.speed <= o.y then
-                    --print('bonus collides')
                     b.y = o.y - b.size - obstacles_speed
                 end
             end
@@ -334,7 +329,11 @@ function endgame()
     score = 0
     bonuses = {}
     obstacles = {}
+    for _, buff in pairs(buffs) do
+        buff:update(5)
+    end
     buffs = {}
+    bars = {}
     time_to_next = 0
     state = 'store'
     music:stop()
