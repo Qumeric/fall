@@ -2,49 +2,47 @@ require 'Tserial'
 cron=require 'cron/cron'
 
 function love.load()
+    -- Name for Desktop OSes 
     love.filesystem.setIdentity('Fall')
 
+    -- Fullscreen with max resolution
     love.window.setMode(0, 0, {fullscreen=true})
-    state = 'store'
-
     width, height = love.window.getMode()
 
-    message = ''
+    -- Start in store with no messages
+    state = 'store'
+    message = ''    -- FIXME change message system?
 
     font = love.graphics.newFont('high_scores.ttf', 48)
 
     music = love.audio.newSource('hexagon-force.mp3')
 
     player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
-              canmove = true, movespeed=7}
-    maxspeed = 20
+              canmove = true, movespeed=width/100}
+    maxspeed = 20   -- maximum speed on y-axis
 
     speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
 
     obstacles = {}
-    time_to_next = 0
+    time_to_next = 0 -- spawn first obstacle immediately
     base_speed = 4
-    obstacles_speed = base_speed
+    obstacles_speed = function() return base_speed + math.sqrt(score)/10 +
+        math.max(0, player.y - height + 200 + player.size)/30 end
     obstacle_height = height/35
-    hole_size = 75
+    hole_size = width/10
 
     bonuses = {}
     bonus_size = height/35
     bonus_freq = 15
-    buffs = {}
-    bars = {}
-    bar_width = 20
+
+    buffs = {}  -- timeeffects on player given by some bonuses
+    
+    bars = {}   -- timebars for some bonuses
+    bar_width = height/30
 
     SAVENAME = 'scores.save'
     score = 0
-    highscore = 0
-    coins = 0
-    if love.filesystem.exists(SAVENAME) then
-        loaded = Tserial.unpack(love.filesystem.read(SAVENAME))
-        highscore = loaded[1]
-        coins = loaded[2]
-        player.movespeed = loaded[3]
-    end
+    load_game()
 end
 
 function love.draw()
@@ -58,12 +56,12 @@ function love.draw()
     if state=='game' then
         -- player
         love.graphics.setColor(255, 0, 0)
-        love.graphics.rectangle('fill', player.x, player.y+obstacles_speed,
+        love.graphics.rectangle('fill', player.x, player.y+obstacles_speed(),
                                         player.size, player.size)
         -- bonuses
         for _, b in pairs(bonuses) do
             love.graphics.setColor(b.col[1], b.col[2], b.col[3]) -- gold
-            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed,
+            love.graphics.rectangle('fill', b.x, b.y+obstacles_speed(),
                                     b.size, b.size)
         end
 
@@ -77,13 +75,13 @@ function love.draw()
         for y, bar in pairs(bars) do
             love.graphics.setColor(bar[2][1], bar[2][2], bar[2][3])
             love.graphics.rectangle('fill', width-bar[1]*20, (y-1)*bar_width, 
-                                    bar[1]*20, bar_width) 
+                                    bar[1]*20, bar_width)   -- FIXME
         end
 
         --scores
         love.graphics.setColor(191, 255, 0)
         love.graphics.print('Score:' .. math.ceil(score), 0, 0)
-        love.graphics.print('Speed:' .. math.ceil(obstacles_speed * 25), 0, 30)
+        love.graphics.print('Speed:' .. math.ceil(obstacles_speed() * 25), 0, 30)
     elseif state == 'store' then
         love.graphics.setColor(255, 191, 0)
         love.graphics.print('Press 1 to buy a speed upgrade ($' ..
@@ -181,7 +179,7 @@ function game(dt)
     end
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
-        time_to_next = 110
+        time_to_next = height/7
         createObstacle()
     end
 
@@ -190,7 +188,7 @@ function game(dt)
         spawnBonus()
     end
 
-    time_to_next = time_to_next - obstacles_speed
+    time_to_next = time_to_next - obstacles_speed()
 
     if love.keyboard.isDown('left') then
         move_player('left')
@@ -217,9 +215,7 @@ function game(dt)
 
     for k, o in pairs(obstacles) do
         -- move obstacles (y)
-        correction = math.max(0, player.y - height + 200 + player.size)/30
-        obstacles_speed = base_speed + correction + math.sqrt(score)/10
-        obstacles[k].y = o.y - obstacles_speed 
+        obstacles[k].y = o.y - obstacles_speed()
 
         -- move obstacles (x)
         obstacles[k].x = o.x + o.movespeed * o.direction
@@ -236,8 +232,8 @@ function game(dt)
             local collide_obs = checkCollision(b.x, b.y, b.size, b.size, 
                                  o.x, o.y, o.length, o.height) 
             if collide_obs then
-                if b.y + b.size - obstacles_speed - b.speed <= o.y then
-                    b.y = o.y - b.size - obstacles_speed
+                if b.y + b.size - obstacles_speed() - b.speed <= o.y then
+                    b.y = o.y - b.size - obstacles_speed()
                 end
             end
         end
@@ -246,8 +242,8 @@ function game(dt)
         collide = checkCollision(player.x, player.y, player.size, player.size, 
                                  o.x, o.y, o.length, o.height) 
         if collide then
-            if player.y + player.size - player.speed - obstacles_speed <= o.y then
-                player.y = o.y - player.size - player.speed - obstacles_speed + 1
+            if player.y + player.size - player.speed - obstacles_speed() <= o.y then
+                player.y = o.y - player.size - player.speed - obstacles_speed() + 1
                 player.speed = 0
             else
                 -- don't let the player fly into collision from sides
@@ -370,4 +366,13 @@ function android_control()
             end
         end
     end
+end
+
+function load_game()
+    if love.filesystem.exists(SAVENAME) then
+        loaded = Tserial.unpack(love.filesystem.read(SAVENAME))
+    end
+        highscore = loaded and loaded[1] or 0
+        coins = loaded and loaded[2] or 0
+        player.movespeed = loaded and loaded[3] or player.movespeed
 end
