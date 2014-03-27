@@ -4,11 +4,10 @@ cron=require 'cron/cron'
 function love.load()
     love.filesystem.setIdentity('Fall')
 
-    width = 700
-    height = 700
-
-    love.window.setMode(width, height)
+    love.window.setMode(0, 0, {fullscreen=true})
     state = 'store'
+
+    width, height = love.window.getMode()
 
     message = ''
 
@@ -16,7 +15,7 @@ function love.load()
 
     music = love.audio.newSource('hexagon-force.mp3')
 
-    player = {x = (width - 25)/2, y = 0, speed = 0, size = 25, 
+    player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
               canmove = true, movespeed=7}
     maxspeed = 20
 
@@ -26,11 +25,11 @@ function love.load()
     time_to_next = 0
     base_speed = 4
     obstacles_speed = base_speed
-    obstacle_height = 20
+    obstacle_height = height/35
     hole_size = 75
 
     bonuses = {}
-    bonus_size = 20
+    bonus_size = height/35
     bonus_freq = 15
     buffs = {}
     bars = {}
@@ -101,6 +100,8 @@ end
 
 
 function love.update(dt)
+    android_control()
+
     if state =='game' then
         game(dt)
     elseif state =='store' then
@@ -191,13 +192,10 @@ function game(dt)
 
     time_to_next = time_to_next - obstacles_speed
 
-    -- move player only if he doesn't collide obstacle from side he wants move
-    if player.canmove then
-        if love.keyboard.isDown('left') then
-            player.x = player.x - player.movespeed
-        elseif love.keyboard.isDown('right') then
-            player.x = player.x + player.movespeed
-        end
+    if love.keyboard.isDown('left') then
+        move_player('left')
+    elseif love.keyboard.isDown('right') then
+        move_player('right')
     end
 
     player.speed = player.speed + 0.4
@@ -294,23 +292,27 @@ end
 
 function store(dt)
     if love.keyboard.isDown('1') then
-        if player.movespeed <= maxspeed then
-            if coins >= speed_price() then
-                coins = coins - speed_price()
-                player.movespeed = player.movespeed + 1
-                menumsg('Your new speed is ' .. player.movespeed .. '!')
-                saveGame()
-            else
-                menumsg('Not enough money.')
-            end
-        else
-            menumsg('You are too fast already.')
-        end
+        buy_speed()
     elseif love.keyboard.isDown('0') then
         state = 'game'
         music:play()
     end
     if message_clock then message_clock:update(dt) end
+end
+
+function buy_speed()
+    if player.movespeed <= maxspeed then
+        if coins >= speed_price() then
+            coins = coins - speed_price()
+            player.movespeed = player.movespeed + 1
+            menumsg('Your new speed is ' .. player.movespeed .. '!')
+            saveGame()
+        else
+            menumsg('Not enough money.')
+        end
+    else
+        menumsg('You are too fast already.')
+    end
 end
 
 function menumsg(str)
@@ -337,4 +339,35 @@ function endgame()
     time_to_next = 0
     state = 'store'
     music:stop()
+end
+
+function move_player(side)    
+    -- move player only if he doesn't collide obstacle from side he wants move
+    if player.canmove then
+        if side == 'left' then
+            player.x = player.x - player.movespeed
+        elseif side == 'right' then
+            player.x = player.x + player.movespeed
+        end
+    end
+end
+
+function android_control()
+    local touches = love.touch and love.touch.getTouchCount() or 0
+    if touches > 0 then
+        local id, tx, ty = love.touch.getTouch(touches)
+        if state=='store' then
+            if tx <= 0.5 then
+                buy_speed()
+            else
+                state='game'
+            end
+       elseif state=='game' then
+            if tx <= 0.5 then
+                move_player('left')
+            else
+                move_player('right')
+            end
+        end
+    end
 end
