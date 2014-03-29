@@ -12,16 +12,12 @@ Bonuses
 -------
 #### Golden
 It is a coin.
-
 #### Azure
 Destroys all obstacles.
-
 #### Lime
 Increases your movement speed.
-
 ### Cream
 Increases the size of holes.
-
 #### Purple
 Decreases the speed of a camera.
 

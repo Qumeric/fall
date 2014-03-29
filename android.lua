@@ -33,4 +33,6 @@ function OSSpecificStore()
     love.graphics.setColor(0, 0, 0)
     love.graphics.print('$', width/8, height/10)
     love.graphics.print('>', 5 * width/8, height/10)
+    love.graphics.setFont(font)
+    love.graphics.print(speed_price(), 0, height-50)
 end

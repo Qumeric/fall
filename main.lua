@@ -22,7 +22,7 @@ function love.load()
 
     player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
               canmove = true, movespeed=width/100, acceleration = 0.4}
-    maxspeed = 20   -- maximum speed on y-axis
+    maxspeed = width/40   -- maximum speed on y-axis
 
     speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
 

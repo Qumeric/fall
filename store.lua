@@ -24,7 +24,6 @@ end
 
 function drawStore()
     OSSpecificStore()
-    love.graphics.setFont(font)
     love.graphics.setColor(191, 255, 0)
     love.graphics.print('Highscore:'  .. highscore, 0, 0)
     love.graphics.print('Money:    '  .. coins, 0, 30)
