@@ -1,4 +1,6 @@
 love.filesystem.load('io.lua')()
+love.filesystem.load('bonus.lua')()
+love.filesystem.load('store.lua')()
 love.filesystem.load(love.touch and 'android.lua' or 'pc.lua')()
 
 require 'Tserial'
@@ -27,14 +29,15 @@ function love.load()
     obstacles = {}
     time_to_next = 0 -- spawn first obstacle immediately
     base_speed = 4
-    obstacles_speed = function() return base_speed + math.sqrt(score)/10 +
-        math.max(0, player.y - height + 200 + player.size)/30 end
+
+    correction = function() return math.max(0, player.y - height + height/4 + player.size)/height*50 end
+    obstacles_speed = function() return base_speed + math.sqrt(score)/10 + correction() end
     obstacle_height = height/35
     hole_size = width/10
 
     bonuses = {}
     bonus_size = height/35
-    bonus_freq = 15
+    bonus_freq = 17
 
     buffs = {}  -- timeeffects on player given by some bonuses
     
@@ -84,19 +87,9 @@ function love.draw()
         love.graphics.print('Score:' .. math.ceil(score), 0, 0)
         love.graphics.print('Speed:' .. math.ceil(obstacles_speed() * 25), 0, 30)
     elseif state == 'store' then
-        love.graphics.setColor(255, 191, 0)
-        love.graphics.print('Press 1 to buy a speed upgrade ($' ..
-                             speed_price() .. ')',0, 200)
-        love.graphics.print('Press 0 to start new game', 0, 300)
-        love.graphics.setColor(250, 245, 191)
-        love.graphics.print(message, 50, 400)
-        love.graphics.setColor(191, 255, 0)
-        love.graphics.print('Highscore:'  .. highscore, 0, 0)
-        love.graphics.print('Money:    '  .. coins, 0, 30)
-        love.graphics.print('Movespeed:'  .. player.movespeed, 0, 60)
+        drawStore()
     end
 end
-
 
 function love.update(dt)
     input()
@@ -113,88 +106,36 @@ function createObstacle()
     local ms = math.max(0, math.random(-5, 5))
     local d = (math.random() > 0.5) and 1 or -1
 
-    obstacle1 = {x = hole_position+hole_size, y = height, direction = d,
+    local obstacle1 = {x = hole_position+hole_size, y = height, direction = d,
                  length = width, height = obstacle_height, movespeed = ms}
-    obstacle2 = {x = -width+hole_position-hole_size, y = height, direction = d,
+    local obstacle2 = {x = -width+hole_position-hole_size, y = height, direction = d,
                  length = width, height = obstacle_height, movespeed = ms}
 
     table.insert(obstacles, obstacle1)
     table.insert(obstacles, obstacle2)
 end
 
-function spawnBonus()
-    local classes = {
-        {'destroy',          {000, 255, 255}},
-        {'player.movespeed', {000, 000, 255}},
-        {'hole_size',        {000, 255, 000}},
-        {'base_speed',       {255, 000, 255}}}
-    local c = {'coin', {255, 215, 0}}
-    if math.random() > 0.7 then
-        c = classes[math.random(#classes)]
-    end
-    bonus = {class = c[1], size = bonus_size, speed = 1, col = c[2], 
-             x = math.random(width),
-             y = math.random(player.y, height)-bonus_size}
-    table.insert(bonuses, bonus)
-end
-
-function consumeBonus(b)
-    if b.class == 'coin' then
-        coins = coins + 1
-    elseif b.class  == 'destroy' then
-        obstacles = {}
-        time_to_next = 0
-    else
-        local power = b.class == 'base_speed' and -1.2 or
-            5 + 25 * (b.class == 'hole_size' and 1 or 0)
-        makeBuff(b.class, power, 5, b.col)
-    end
-end
-
-function makeBuff(stat, power, time, color)
-    local c = stat .. '=' .. stat
-    loadstring(c .. '+ ' .. power)()
-    local f = function() loadstring(c .. '- ' .. power)() end
-    table.insert(buffs, cron.after(time, f))
-    table.insert(bars, {5, color})
-end
-
 function game(dt)
-    for k, bar in pairs(bars) do
-        bars[k][1] = bar[1] - dt
-        if bar[1] <= 0 then
-            table.remove(bars, k)
-        end
-    end
+    updateBonuses()
+    updateBars(dt)
+    updateBuffs(dt)
+
     -- spawn obstacle if time has come
     if time_to_next <= 0 then
-        time_to_next = height/7
+        time_to_next = height/5
         createObstacle()
     end
+
+    time_to_next = time_to_next - obstacles_speed()
 
     -- spawn bonus
     if math.random(0, 1000) < bonus_freq then
         spawnBonus()
     end
 
-    time_to_next = time_to_next - obstacles_speed()
-
     player.speed = player.speed + player.acceleration
     player.canmove = true
 
-    -- move and remove unneded bonuses
-    for k, b in pairs(bonuses) do
-        local collide_player = checkCollision(b.x, b.y, b.size, b.size, 
-                                 player.x, player.y, player.size, player.size) 
-        if collide_player then
-            consumeBonus(b)
-            bonuses[k] = nil
-        end
-        b.y = b.y + b.speed
-        if b.y <= -b.size or b.y > height then
-            table.remove(bonuses,k)
-        end
-    end
 
     for k, o in pairs(obstacles) do
         -- move obstacles (y)
@@ -261,36 +202,6 @@ function game(dt)
     -- don't let the player go offscreen
     player.x = math.max(0, player.x)
     player.x = math.min(width-player.size, player.x)
-
-    -- update buff timers
-    for _, buff in pairs(buffs) do
-        local expired = buff:update(dt)
-        if expired then table.remove(buffs, _) end
-    end
-end
-
-function buySpeed()
-    if player.movespeed <= maxspeed then
-        if coins >= speed_price() then
-            coins = coins - speed_price()
-            player.movespeed = player.movespeed + 1
-            menumsg('Your new speed is ' .. player.movespeed .. '!')
-            saveGame()
-        else
-            menumsg('Not enough money.')
-        end
-    else
-        menumsg('You are too fast already.')
-    end
-end
-
-function menumsg(str)
-    if not justpressed then
-        message = str
-    end
-    justpressed = true
-    local function pm() message = '' justpressed = false end
-    message_clock = cron.after(0.1, pm)
 end
 
 function endGame()
@@ -298,14 +209,14 @@ function endGame()
     saveGame()
     player.y = 0
     score = 0
-    bonuses = {}
     obstacles = {}
+    time_to_next = 0
+    bonuses = {}
     for _, buff in pairs(buffs) do
         buff:update(5)
     end
     buffs = {}
     bars = {}
-    time_to_next = 0
     state = 'store'
     music:stop()
 end
