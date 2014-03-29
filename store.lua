@@ -1,8 +1,8 @@
 function buySpeed()
-    if player.movespeed <= maxspeed then
+    if player.movespeed < maxspeed then
         if coins >= speed_price() then
             coins = coins - speed_price()
-            player.movespeed = player.movespeed + 1
+            player.movespeed = math.min(player.movespeed + 1, maxspeed)
             storeMessage('Your new speed is ' .. player.movespeed .. '!')
             saveGame()
         else
@@ -24,8 +24,11 @@ end
 
 function drawStore()
     OSSpecificStore()
+    love.graphics.setFont(font)
     love.graphics.setColor(191, 255, 0)
     love.graphics.print('Highscore:'  .. highscore, 0, 0)
     love.graphics.print('Money:    '  .. coins, 0, 30)
     love.graphics.print('Movespeed:'  .. player.movespeed, 0, 60)
+    love.graphics.setColor(250, 245, 191)
+    love.graphics.print(message, 400, 0)
 end

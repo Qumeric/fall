@@ -1,8 +1,8 @@
 function spawnBonus()
     local classes = {
-        {'destroy',          {000, 255, 255}},
-        {'player.movespeed', {000, 000, 255}},
-        {'hole_size',        {000, 255, 000}},
+        {'destroy',          {000, 127, 255}},
+        {'player.movespeed', {200, 255, 0}},
+        {'hole_size',        {255, 253, 208}},
         {'base_speed',       {255, 000, 255}}}
     local c = {'coin', {255, 215, 0}}
     if math.random() > 0.7 then

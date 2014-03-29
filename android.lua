@@ -24,7 +24,7 @@ function love.touchpressed(id, tx)
 end
 
 function OSSpecificStore()
-    bigFont = love.graphics.newFont('high_scores.ttf', height)
+    local bigFont = love.graphics.newFont('high_scores.ttf', height)
     love.graphics.setFont(bigFont)
     love.graphics.setColor(150, 128, 40)
     love.graphics.rectangle('fill', 0, 0, width/2, height)
