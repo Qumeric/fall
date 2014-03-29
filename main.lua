@@ -1,12 +1,13 @@
+love.filesystem.load('io.lua')()
+love.filesystem.load(love.touch and 'android.lua' or 'pc.lua')()
+
 require 'Tserial'
 cron=require 'cron/cron'
 
-function love.load()
-    -- Name for Desktop OSes 
-    love.filesystem.setIdentity('Fall')
+love.filesystem.setIdentity('Fall')
+love.window.setMode(0, 0, {fullscreen=true})
 
-    -- Fullscreen with max resolution
-    love.window.setMode(0, 0, {fullscreen=true})
+function love.load()
     width, height = love.window.getMode()
 
     -- Start in store with no messages
@@ -18,7 +19,7 @@ function love.load()
     music = love.audio.newSource('hexagon-force.mp3')
 
     player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
-              canmove = true, movespeed=width/100}
+              canmove = true, movespeed=width/100, acceleration = 0.4}
     maxspeed = 20   -- maximum speed on y-axis
 
     speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
@@ -42,7 +43,7 @@ function love.load()
 
     SAVENAME = 'scores.save'
     score = 0
-    load_game()
+    loadGame()
 end
 
 function love.draw()
@@ -98,12 +99,12 @@ end
 
 
 function love.update(dt)
-    android_control()
+    input()
 
     if state =='game' then
         game(dt)
     elseif state =='store' then
-        store(dt)
+        if message_clock then message_clock:update(dt) end
     end
 end
 
@@ -119,18 +120,6 @@ function createObstacle()
 
     table.insert(obstacles, obstacle1)
     table.insert(obstacles, obstacle2)
-end
-
-function checkCollision(x1,y1,w1,h1, x2,y2,w2,h2)
-    return  x1 < x2+w2 and
-            x2 < x1+w1 and
-            y1 < y2+h2 and
-            y2 < y1+h1
-end
-
-function saveGame()
-    love.filesystem.write(SAVENAME, Tserial.pack({highscore, coins,
-                                                  player.movespeed}))
 end
 
 function spawnBonus()
@@ -190,13 +179,7 @@ function game(dt)
 
     time_to_next = time_to_next - obstacles_speed()
 
-    if love.keyboard.isDown('left') then
-        move_player('left')
-    elseif love.keyboard.isDown('right') then
-        move_player('right')
-    end
-
-    player.speed = player.speed + 0.4
+    player.speed = player.speed + player.acceleration
     player.canmove = true
 
     -- move and remove unneded bonuses
@@ -272,7 +255,7 @@ function game(dt)
     
     -- game over?
     if player.y < 0 then
-        endgame()
+        endGame()
     end
 
     -- don't let the player go offscreen
@@ -286,17 +269,7 @@ function game(dt)
     end
 end
 
-function store(dt)
-    if love.keyboard.isDown('1') then
-        buy_speed()
-    elseif love.keyboard.isDown('0') then
-        state = 'game'
-        music:play()
-    end
-    if message_clock then message_clock:update(dt) end
-end
-
-function buy_speed()
+function buySpeed()
     if player.movespeed <= maxspeed then
         if coins >= speed_price() then
             coins = coins - speed_price()
@@ -320,7 +293,7 @@ function menumsg(str)
     message_clock = cron.after(0.1, pm)
 end
 
-function endgame()
+function endGame()
     highscore = math.max(score, highscore)
     saveGame()
     player.y = 0
@@ -337,7 +310,7 @@ function endgame()
     music:stop()
 end
 
-function move_player(side)    
+function movePlayer(side)    
     -- move player only if he doesn't collide obstacle from side he wants move
     if player.canmove then
         if side == 'left' then
@@ -348,31 +321,9 @@ function move_player(side)
     end
 end
 
-function android_control()
-    local touches = love.touch and love.touch.getTouchCount() or 0
-    if touches > 0 then
-        local id, tx, ty = love.touch.getTouch(touches)
-        if state=='store' then
-            if tx <= 0.5 then
-                buy_speed()
-            else
-                state='game'
-            end
-       elseif state=='game' then
-            if tx <= 0.5 then
-                move_player('left')
-            else
-                move_player('right')
-            end
-        end
-    end
-end
-
-function load_game()
-    if love.filesystem.exists(SAVENAME) then
-        loaded = Tserial.unpack(love.filesystem.read(SAVENAME))
-    end
-        highscore = loaded and loaded[1] or 0
-        coins = loaded and loaded[2] or 0
-        player.movespeed = loaded and loaded[3] or player.movespeed
+function checkCollision(x1,y1,w1,h1, x2,y2,w2,h2)
+    return  x1 < x2+w2 and
+            x2 < x1+w1 and
+            y1 < y2+h2 and
+            y2 < y1+h1
 end
