@@ -2,7 +2,7 @@ function buySpeed()
     if player.movespeed < maxspeed then
         if coins >= speed_price() then
             coins = coins - speed_price()
-            player.movespeed = math.min(player.movespeed + 1, maxspeed)
+            player.movespeed = math.min(player.movespeed + width/2000, maxspeed)
             storeMessage('Your new speed is ' .. player.movespeed .. '!')
             saveGame()
         else

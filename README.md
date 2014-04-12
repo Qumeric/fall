@@ -36,3 +36,9 @@ All music use [CC BY-NC-SA 3.0](http://creativecommons.org/licenses/by-nc-sa/3.0
 
 ### Font
 [High Scores](http://fontstruct.com/fontstructions/show/352301) by [Romeo Figueroa](http://fontstruct.com/fontstructors/romeo_figueroa).
+
+Bugs
+----
+First bug: control. You can find it if you try. This bug is a feature now.
+
+Second bug: the game could run different on different screens. It's hard to fix so I won't. Don't repeat my mistakes!

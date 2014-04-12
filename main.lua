@@ -14,24 +14,24 @@ function love.load()
 
     -- Start in store with no messages
     state = 'store'
-    message = ''    -- FIXME change message system?
+    message = ''
 
     font = love.graphics.newFont('high_scores.ttf', 48)
 
     music = love.audio.newSource('hexagon-force.mp3')
 
     player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
-              canmove = true, movespeed=width/100, acceleration = 0.4}
+              canmove = true, movespeed=width/100, acceleration = height/2500}
     maxspeed = width/40   -- maximum speed on y-axis
 
     speed_price = function() return math.ceil((player.movespeed-2)^1.8) end
 
     obstacles = {}
     time_to_next = 0 -- spawn first obstacle immediately
-    base_speed = 4
+    base_speed = height/250
 
     correction = function() return math.max(0, player.y - height + height/4 + player.size)/height*50 end
-    obstacles_speed = function() return base_speed + math.sqrt(score)/10 + correction() end
+    obstacles_speed = function() return base_speed + score^0.7/height*100 + correction() end
     obstacle_height = height/35
     hole_size = width/10
 
@@ -39,9 +39,9 @@ function love.load()
     bonus_size = height/35
     bonus_freq = 17
 
-    buffs = {}  -- timeeffects on player given by some bonuses
+    buffs = {}  -- effects on player given by some bonuses
     
-    bars = {}   -- timebars for some bonuses
+    bars = {}   -- represent time for some bonuses
     bar_width = height/30
 
     SAVENAME = 'scores.save'
@@ -128,7 +128,6 @@ function game(dt)
 
     time_to_next = time_to_next - obstacles_speed()
 
-    -- spawn bonus
     if math.random(0, 1000) < bonus_freq then
         spawnBonus()
     end
@@ -157,7 +156,7 @@ function game(dt)
                                  o.x, o.y, o.length, o.height) 
             if collide_obs then
                 if b.y + b.size - obstacles_speed() - b.speed <= o.y then
-                    b.y = o.y - b.size - obstacles_speed()
+                    b.y = o.y - b.size - obstacles_speed() + b.speed
                 end
             end
         end
@@ -194,7 +193,6 @@ function game(dt)
         player.y = player.y + player.speed 
     end
     
-    -- game over?
     if player.y < 0 then
         endGame()
     end
@@ -222,7 +220,7 @@ function endGame()
 end
 
 function movePlayer(side)    
-    -- move player only if he doesn't collide obstacle from side he wants move
+    -- move player only if he doesn't collide obstacle from side
     if player.canmove then
         if side == 'left' then
             player.x = player.x - player.movespeed
