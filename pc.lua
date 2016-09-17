@@ -1,4 +1,7 @@
 function input()
+   if love.keyboard.isDown('escape') then
+      love.event.quit()
+   end
     if state=='game' then
         if love.keyboard.isDown('left') then
             movePlayer('left')

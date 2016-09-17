@@ -1,7 +1,11 @@
 love.filesystem.load('io.lua')()
 love.filesystem.load('bonus.lua')()
 love.filesystem.load('store.lua')()
-love.filesystem.load(love.touch and 'android.lua' or 'pc.lua')()
+if love.system.getOS() == "Android" then
+    love.filesystem.load('android.lua')()
+else
+    love.filesystem.load('pc.lua')()
+end
 
 require 'Tserial'
 cron=require 'cron/cron'
