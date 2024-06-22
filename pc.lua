@@ -19,8 +19,8 @@ function input()
 end
 
 function OSSpecificStore()
-    love.graphics.setColor(255, 191, 0)
+    love.graphics.setColor(1, 191/255, 0)
     love.graphics.print('Press 1 to buy a speed upgrade ($' ..
-                         speed_price() .. ')',0, 200)
+                         speed_price() .. ')', 0, 200)
     love.graphics.print('Press 0 to start new game', 0, 300)
 end

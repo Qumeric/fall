@@ -1,10 +1,10 @@
 function spawnBonus()
     local classes = {
-        {'destroy',          {000, 127, 255}},
-        {'player.movespeed', {200, 255, 0}},
-        {'hole_size',        {255, 253, 208}},
-        {'base_speed',       {255, 000, 255}}}
-    local c = {'coin', {255, 215, 0}}
+        {'destroy',          {0, 127/255, 1}},
+        {'player.movespeed', {200/255, 1, 0}},
+        {'hole_size',        {1, 253/255, 208/255}},
+        {'base_speed',       {1, 0, 1}}}
+    local c = {'coin', {1, 215/255, 0}}
     if math.random() > 0.7 then
         c = classes[math.random(#classes)]
     end
@@ -32,40 +32,41 @@ end
 
 function makeBuff(stat, power, time, color)
     local c = stat .. '=' .. stat
-    loadstring(c .. '+ ' .. power)()
-    local f = function() loadstring(c .. '- ' .. power)() end
+    load(c .. '+ ' .. power)()
+    local f = function() load(c .. '- ' .. power)() end
     table.insert(buffs, cron.after(time, f))
     table.insert(bars, {5, color})
 end
 
 function updateBuffs(dt)
-    for _, buff in pairs(buffs) do
-        local expired = buff:update(dt)
-        if expired then table.remove(buffs, _) end
+    for i = #buffs, 1, -1 do
+        local expired = buffs[i]:update(dt)
+        if expired then table.remove(buffs, i) end
     end
 end
 
 function updateBars(dt)
-    for k, bar in pairs(bars) do
-        bars[k][1] = bar[1] - dt
-        if bar[1] <= 0 then
-            table.remove(bars, k)
+    for i = #bars, 1, -1 do
+        bars[i][1] = bars[i][1] - dt
+        if bars[i][1] <= 0 then
+            table.remove(bars, i)
         end
     end
 end
 
 function updateBonuses()
-    for k, b in pairs(bonuses) do
+    for i = #bonuses, 1, -1 do
+        local b = bonuses[i]
         local collide_player = checkCollision(b.x, b.y, b.size, b.size, 
                                  player.x, player.y, player.size, player.size) 
         if collide_player then
             consumeBonus(b)
-            bonuses[k] = nil
-        end
-        b.y = b.y + b.speed
-        if b.y <= -b.size or b.y > height then
-            table.remove(bonuses,k)
+            table.remove(bonuses, i)
+        else
+            b.y = b.y + b.speed
+            if b.y <= -b.size or b.y > height then
+                table.remove(bonuses, i)
+            end
         end
     end
 end
-

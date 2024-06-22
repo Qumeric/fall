@@ -8,21 +8,20 @@ else
 end
 
 require 'Tserial'
-cron=require 'cron/cron'
+cron = require 'cron'
 
 love.filesystem.setIdentity('Fall')
-love.window.setMode(0, 0, {fullscreen=true})
+love.window.setMode(800, 600, {resizable=false, vsync=true})
 
 function love.load()
-    width, height = love.window.getMode()
+    width, height = 800, 600  -- Set fixed dimensions
 
     -- Start in store with no messages
     state = 'store'
     message = ''
 
     font = love.graphics.newFont('high_scores.ttf', 48)
-
-    music = love.audio.newSource('hexagon-force.mp3')
+    music = love.audio.newSource('hexagon-force.mp3', 'stream')
 
     player = {x = (width/(25/24))/2, y = 0, speed = 0, size = height/25, 
               canmove = true, movespeed=width/100, acceleration = height/2500}
@@ -55,7 +54,7 @@ end
 
 function love.draw()
     -- background
-    love.graphics.setColor(55, 42, 25)
+    love.graphics.setColor(55/255, 42/255, 25/255)
     love.graphics.rectangle('fill', 0, 0, width, height)
     
     -- scores
@@ -63,31 +62,31 @@ function love.draw()
 
     if state=='game' then
         -- player
-        love.graphics.setColor(255, 0, 0)
+        love.graphics.setColor(1, 0, 0)
         love.graphics.rectangle('fill', player.x, player.y+obstacles_speed(),
                                         player.size, player.size)
         -- bonuses
         for _, b in pairs(bonuses) do
-            love.graphics.setColor(b.col[1], b.col[2], b.col[3]) -- gold
+            love.graphics.setColor(b.col[1], b.col[2], b.col[3], b.col[4])
             love.graphics.rectangle('fill', b.x, b.y+obstacles_speed(),
                                     b.size, b.size)
         end
 
         -- obstacles
-        love.graphics.setColor(255, 255, 255)
+        love.graphics.setColor(1, 1, 1)
         for _, o in pairs(obstacles) do
             love.graphics.rectangle('fill', o.x, o.y, o.length, o.height)
         end
 
         -- bars
         for y, bar in pairs(bars) do
-            love.graphics.setColor(bar[2][1], bar[2][2], bar[2][3])
+            love.graphics.setColor(bar[2][1], bar[2][2], bar[2][3], bar[2][4])
             love.graphics.rectangle('fill', width-bar[1]*20, (y-1)*bar_width, 
                                     bar[1]*20, bar_width)   -- FIXME
         end
 
         --scores
-        love.graphics.setColor(191, 255, 0)
+        love.graphics.setColor(191/255, 1, 0)
         love.graphics.print('Score:' .. math.ceil(score), 0, 0)
         love.graphics.print('Speed:' .. math.ceil(obstacles_speed() * 25), 0, 30)
     elseif state == 'store' then

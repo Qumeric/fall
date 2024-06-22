@@ -1,10 +1,10 @@
 function input()
-    local touches = love.touch.getTouchCount()
+    local touches = love.touch.getTouches()
 
-    if touches > 0 and state=='game' then
-        local id, tx = love.touch.getTouch(touches)
+    if #touches > 0 and state=='game' then
+        local id, tx, ty = love.touch.getPosition(touches[1])
 
-        if tx <= 0.5 then
+        if tx <= love.graphics.getWidth() / 2 then
             movePlayer('left')
         else
             movePlayer('right')
@@ -12,9 +12,9 @@ function input()
     end
 end
 
-function love.touchpressed(id, tx)
+function love.touchpressed(id, x, y, dx, dy, pressure)
     if state=='store' then
-        if tx <= 0.5 then
+        if x <= love.graphics.getWidth() / 2 then
             buySpeed()
         else
             state='game'
@@ -26,9 +26,9 @@ end
 function OSSpecificStore()
     local bigFont = love.graphics.newFont('high_scores.ttf', height)
     love.graphics.setFont(bigFont)
-    love.graphics.setColor(150, 128, 40)
+    love.graphics.setColor(150/255, 128/255, 40/255)
     love.graphics.rectangle('fill', 0, 0, width/2, height)
-    love.graphics.setColor(40, 150, 40)
+    love.graphics.setColor(40/255, 150/255, 40/255)
     love.graphics.rectangle('fill', width/2, 0, width, height)
     love.graphics.setColor(0, 0, 0)
     love.graphics.print('$', width/8, height/10)
